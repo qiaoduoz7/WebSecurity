@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
-from keras.layers import Embedding, LSTM, GRU, Dropout, Dense, Input
-from keras.models import Model, Sequential, load_model
-from keras.preprocessing import sequence
-from keras.datasets import imdb
+from tensorflow.keras.layers import Embedding, LSTM, GRU, Dropout, Dense, Input
+from tensorflow.keras.models import Model, Sequential, load_model
+from tensorflow.keras.preprocessing import sequence
+from tensorflow.keras.datasets import imdb
 from gensim.models.word2vec import Word2Vec
 
 (train_x, train_y), (test_x, test_y) = imdb.load_data(num_words=10000)
@@ -64,26 +64,17 @@ def build_embedMatrix(word2vec_model):
         embedMatrix[i + 1] = vocab_list[i][1]  # vocab_list[i][1]这个词对应embedding_matrix的那一行
     return word2idx, embedMatrix
 
-word2vec_model = train_word2vec(X_all, embedSize=300, epoch_num=10)
-word2idx, embedMatrix = build_word2idx_embedMatrix(word2vec_model)  # 制作word2idx和embedMatrix
-
 def make_deepLearn_data(sentenList, word2idx):
     X_train_idx = [[word2idx.get(w, 0) for w in sen] for sen in sentenList]  # 之前都是通过word处理的，这里word2idx讲word转为id
-    X_train_idx = np.array(sequence.pad_sequences(X_train_idx, maxlen=MAX_SEQ_LEN))  # padding成相同长度
+    X_train_idx = np.array(sequence.pad_sequences(X_train_idx, maxlen=128))  # padding成相同长度
     return X_train_idx
-X_all_idx = make_deepLearn_data(X_all, word2idx)  # 制作符合要求的深度学习数据
-y_all_idx = np.array(y_all)  # 一定要注意，X_all和y_all必须是np.array()类型，否则报错
-
-X_tra_idx, X_val_idx, y_tra_idx, y_val_idx = train_test_split(X_all_idx, y_all_idx, test_size=0.2,
-                                                              random_state=0, stratify=y_all_idx)
-
 
 def Lstm_model(embedMatrix):
-    input_layer = Input(shape=(MAX_SEQ_LEN,), dtype='int32')
+    input_layer = Input(shape=(128,), dtype='int32')
     embedding_layer = Embedding(input_dim=len(embedMatrix), output_dim=len(embedMatrix[0]),
                                 weights=[embedMatrix],  # 表示直接使用预训练的词向量
                                 trainable=False)(input_layer)  # False表示不对词向量微调
-    Lstm_layer = LSTM(units=20, return_sequences=False)(embedding_layer)
+    Lstm_layer = LSTM(units=128, return_sequences=False)(embedding_layer)
     drop_layer = Dropout(0.5)(Lstm_layer)
     dense_layer = Dense(units=1, activation="sigmoid")(drop_layer)
     model = Model(inputs=[input_layer], outputs=[dense_layer])
@@ -91,10 +82,22 @@ def Lstm_model(embedMatrix):
     print(model.summary())
     return model
 
+word2vec_model = train_word2vec(X_all, embedSize=300, epoch_num=10)
+word2idx, embedMatrix = build_embedMatrix(word2vec_model)  # 制作word2idx和embedMatrix
+
+
+X_all_idx = make_deepLearn_data(X_all, word2idx)  # 制作符合要求的深度学习数据
+
+
+y_all_idx = np.array(y_all)  # 一定要注意，X_all和y_all必须是np.array()类型，否则报错
+
+X_tra_idx, X_val_idx, y_tra_idx, y_val_idx = train_test_split(X_all_idx, y_all_idx, test_size=0.2,
+                                                              random_state=0, stratify=y_all_idx)
+
 
 model = Lstm_model(embedMatrix)
 model.fit(X_tra_idx, y_tra_idx, validation_data=(X_val_idx, y_val_idx),
-          epochs=1, batch_size=100, verbose=1)
+          epochs=10, batch_size=32, verbose=1)
 y_pred = model.predict(X_val_idx)
 y_pred_idx = [1 if prob[0] > 0.5 else 0 for prob in y_pred]
 
