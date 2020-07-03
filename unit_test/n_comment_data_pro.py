@@ -10,30 +10,7 @@ from tensorflow.keras.models import Model, Sequential, load_model
 from tensorflow.keras.preprocessing import sequence
 from tensorflow.keras.datasets import imdb
 from gensim.models.word2vec import Word2Vec
-
-(train_x, train_y), (test_x, test_y) = imdb.load_data(num_words=10000)
-# 数据连接
-X_all = (list(train_x) + list(test_x))[0: 1000]
-y_all = (list(train_y) + list(test_y))[0: 1000]
-# 字典{word: word_index}
-imdb_word2idx = imdb.get_word_index()
-imdb_idx2word = dict((idx, word) for (word, idx) in imdb_word2idx.items())
-imdb_idx2word['<PAD>'] = 0
-imdb_idx2word['<START>'] = 1
-imdb_idx2word['<UNK>'] = 2
-imdb_idx2word['<UNUSED>'] = 3
-X_all = [[imdb_idx2word.get(idx-3, '?') for idx in sen][1:] for sen in X_all]
-print(X_all[0])
-# def get_words(sent_ids):
-#     return ' '.join([id2word.get(i, '?') for i in sent_ids])
-# def get_words(sent_ids):
-#     '''分好词
-#
-#     :param sent_ids:
-#     :return:
-#     '''
-#     return [id2word.get(i, '?') for i in sent_ids]
-# sent = get_words(train_x[0])
+from data_pro import comment_data_pro
 
 
 def train_word2vec(sentenceList, embedSize=300, epoch_num=10):
@@ -81,6 +58,41 @@ def Lstm_model(embedMatrix):
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     print(model.summary())
     return model
+
+
+# x_train, x_test, y_train, y_test = comment_data_pro.load_all_files()
+# print(x_train)
+# print(x_train.shape)
+# print(type(x_train))
+# print(y_train)
+# print(y_train.shape)
+# print(type(y_train))
+# exit()
+
+(train_x, train_y), (test_x, test_y) = imdb.load_data(num_words=10000)
+
+# 数据连接
+X_all = (list(train_x) + list(test_x))[0: 1000]
+y_all = (list(train_y) + list(test_y))[0: 1000]
+# 字典{word: word_index}
+imdb_word2idx = imdb.get_word_index()
+imdb_idx2word = dict((idx, word) for (word, idx) in imdb_word2idx.items())
+imdb_idx2word['<PAD>'] = 0
+imdb_idx2word['<START>'] = 1
+imdb_idx2word['<UNK>'] = 2
+imdb_idx2word['<UNUSED>'] = 3
+X_all = [[imdb_idx2word.get(idx-3, '?') for idx in sen][1:] for sen in X_all]
+
+# def get_words(sent_ids):
+#     return ' '.join([id2word.get(i, '?') for i in sent_ids])
+# def get_words(sent_ids):
+#     '''分好词
+#
+#     :param sent_ids:
+#     :return:
+#     '''
+#     return [id2word.get(i, '?') for i in sent_ids]
+# sent = get_words(train_x[0])
 
 word2vec_model = train_word2vec(X_all, embedSize=300, epoch_num=10)
 word2idx, embedMatrix = build_embedMatrix(word2vec_model)  # 制作word2idx和embedMatrix

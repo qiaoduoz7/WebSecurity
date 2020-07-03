@@ -8,9 +8,10 @@ from gensim.models import Doc2Vec
 from gensim.models.doc2vec import Doc2Vec,LabeledSentence
 import multiprocessing
 from tensorflow.keras.preprocessing import sequence
+from sklearn.model_selection import train_test_split
 
 
-max_features = 5000  # 每个word维度
+max_features = 128  # 每个word维度
 max_document_length = 1000  # sequnence_length
 vocabulary = None
 doc2vec_path = "doc2vec.model"
@@ -84,7 +85,6 @@ def get_features_by_wordbag():
 
     :return:
     '''
-    global max_features
     x_train, x_test, y_train, y_test=load_all_files()
     vectorizer = CountVectorizer(
                                  decode_error='ignore',
@@ -114,7 +114,6 @@ def get_features_by_wordbag_tfidf():
 
     :return:
     '''
-    global max_features
     x_train, x_test, y_train, y_test=load_all_files()
     vectorizer = CountVectorizer(
                                  decode_error='ignore',
@@ -145,7 +144,7 @@ def get_features_by_wordbag_tfidf():
     x_test = x_test.toarray()
     return x_train, x_test, y_train, y_test
 
-def cleanText(corpus):
+def clean_text(corpus):
     ''' 内容预处理
 
     :param corpus:
@@ -174,24 +173,18 @@ def normalize_text(text):
         norm_text = norm_text.replace(char, ' ' + char + ' ')
     return norm_text
 
-def labelizeReviews(reviews, label_type):
-    '''  get标签 相当于锻炼id
-
-    :param reviews:
-    :param label_type:
-    :return:
-    '''
-    labelized = []
-    for i, v in enumerate(reviews):
-        label = '%s_%s' % (label_type, i)
-        #labelized.append(LabeledSentence(v, [label]))
-        #labelized.append(LabeledSentence(words=v,tags=label))
-        labelized.append(SentimentDocument(v, [label]))
-    return labelized
-
 def listConvertNumpy(y):
     y = np.array(y)
     return y
+
+def getsample(x, y):
+    '''返回样本集
+
+    :return:  比例划分样本集
+    '''
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2,
+                                                                  random_state=0, stratify=y)
+    return x_train, x_test, y_train, y_test
 
 # def getVecs(model, corpus, size):
 #     vecs = [np.array(model.docvecs[z.tags[0]]).reshape((1, size)) for z in corpus]
@@ -221,14 +214,13 @@ def listConvertNumpy(y):
 
 # def getVecsBydec2Vec(model, corpus, size):
 
-
 def build_embedMatrix(word2vec_model):
     '''构建word2Vec嵌入
 
     :param word2vec_model:
     :return:  word2vec enmbed  and mapping(word -> word2vec 向量)
     '''
-    word2idx = {"_stopWord": 0}  # 这里加了一行是用来过滤停用词的。
+    word2idx = {"_stopWord": 0}  # 这里加了一行是用来过滤停用词的。  + 1
     vocab_list = [(w, word2vec_model.wv[w]) for w, v in word2vec_model.wv.vocab.items()]
     embedMatrix = np.zeros((len(word2vec_model.wv.vocab.items()) + 1, word2vec_model.vector_size))  # +1是因为停用词
     for i in range(0, len(vocab_list)):
@@ -237,25 +229,68 @@ def build_embedMatrix(word2vec_model):
         embedMatrix[i + 1] = vocab_list[i][1]  # vocab_list[i][1]这个词对应embedding_matrix的那一行
     return word2idx, embedMatrix
 
-def getVecsByWord2Vec(sentenList, word2idx):
-    global max_features
+def make_data_word2vec(sentenList, word2idx):
+    ''' 建立内容与模型之间的映射
+
+    :param sentenList:
+    :param word2idx:
+    :return:
+    '''
     X_train_idx = [[word2idx.get(w, 0) for w in sen] for sen in sentenList]  # 之前都是通过word处理的，这里word2idx讲word转为id
     X_train_idx = np.array(sequence.pad_sequences(X_train_idx, maxlen=max_features))  # padding成相同长度
     return X_train_idx
 
+def  get_features_by_word2vec():
+    ''' 训练word2vec模型
+
+    :return:
+    '''
+    x_train, x_test, y_train, y_test = load_all_files()
+    x_train = clean_text(x_train)
+    x_test = clean_text(x_test)
+    x = x_train + x_test
+    y = y_train + y_test
+    cores = multiprocessing.cpu_count()
+    if os.path.exists(word2vec_path):
+        print("Find cache file %s" % word2vec_path)
+        model = gensim.models.Word2Vec.load(word2vec_path)
+    else:
+        model = gensim.models.Word2Vec(size=max_features, window=5, min_count=10, iter=10, workers=cores)
+        model.build_vocab(x)
+        model.train(x, total_examples=model.corpus_count, epochs=10)
+        model.save(word2vec_path)
+    word2idx, embedMatrix = build_embedMatrix(model)
+    x_idx = make_data_word2vec(x, word2idx)
+    y = listConvertNumpy(y)
+    return x_idx, y, embedMatrix
+
+def labelizeReviews(reviews, label_type):
+    '''  get标签 关联id
+
+    :param reviews:
+    :param label_type:
+    :return:
+    '''
+    labelized = []
+    for i, v in enumerate(reviews):
+        label = '%s_%s' % (label_type, i)
+        #labelized.append(LabeledSentence(v, [label]))
+        #labelized.append(LabeledSentence(words=v,tags=label))
+        labelized.append(SentimentDocument(v, [label]))
+    return labelized
 
 def  get_features_by_doc2vec():
     ''' 训练dec2vec
 
     :return:
     '''
-    global  max_features
-    x_train, x_test, y_train, y_test=load_all_files()
-    x_train = cleanText(x_train)
-    x_test = cleanText(x_test)
+    x_train, x_test, y_train, y_test = load_all_files()
+    x_train = clean_text(x_train)
+    x_test = clean_text(x_test)
     x_train = labelizeReviews(x_train, 'TRAIN')
     x_test = labelizeReviews(x_test, 'TEST')
     x = x_train + x_test
+    y = y_train + y_test
     cores = multiprocessing.cpu_count()
     #models = [
         # PV-DBOW
@@ -267,7 +302,8 @@ def  get_features_by_doc2vec():
         print("Find cache file %s" % doc2vec_path)
         model = Doc2Vec.load(doc2vec_path)
     else:
-        model = Doc2Vec(dm=0, size=max_features, negative=5, hs=0, min_count=2, workers=cores,iter=60)
+        model = Doc2Vec(dm=0, size=max_features, negative=5, hs=0, min_count=2, workers=cores, epochs=10,
+                        window=5, alpha=0.025)
         #for model in models:
         #    model.build_vocab(x)
         model.build_vocab(x)
@@ -275,42 +311,9 @@ def  get_features_by_doc2vec():
         #for model in models:
         #    model.train(x, total_examples=model.corpus_count, epochs=model.iter)
         #models[0].train(x, total_examples=model.corpus_count, epochs=model.iter)
-        model.train(x, total_examples=model.corpus_count, epochs=model.iter)
+        model.train(x, total_examples=model.corpus_count, epochs=12)
         model.save(doc2vec_path)
 
     word2idx, embedMatrix = build_embedMatrix(model)
-    x_train = getVecsByWord2Vec(x_train, word2idx)
-    x_test = getVecsByWord2Vec(x_test, word2idx)
-    return x_train, x_test, y_train, y_test
-
-def  get_features_by_word2vec():
-    ''' 训练word2vec模型
-
-    :return:
-    '''
-    global  max_features
-    x_train, x_test, y_train, y_test = load_all_files()
-    x_train = cleanText(x_train)
-    x_test = cleanText(x_test)
-    x = x_train + x_test
-    cores = multiprocessing.cpu_count()
-    if os.path.exists(word2vec_path):
-        print("Find cache file %s" % word2vec_path)
-        model = gensim.models.Word2Vec.load(word2vec_path)
-    else:
-        model = gensim.models.Word2Vec(size=max_features, window=5, min_count=10, iter=10, workers=cores)
-        model.build_vocab(x)
-        model.train(x, total_examples=model.corpus_count, epochs=model.iter)
-        model.save(word2vec_path)
-
-    word2idx, embedMatrix = build_embedMatrix(model)
-    x_train = getVecsByWord2Vec(x_train, word2idx)
-    x_test = getVecsByWord2Vec(x_test, word2idx)
-
-    return x_train, x_test, y_train, y_test, embedMatrix
-
-
-
-
-
-
+    x_idx = getVecsByWord2Vec(x, word2idx)
+    return x_idx, y_train, y_test, embedMatrix
