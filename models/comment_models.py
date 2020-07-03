@@ -84,8 +84,9 @@ def do_rnn_word2vec(x_train, x_test, y_train, y_test, embedMatrix):
 
 def do_cnn_doc2vec(trainX, testX, trainY, testY, embedMatrix):
     # set parameters:  设定参数
-    max_features = 128  # 最大特征数（词汇表大小）
-    maxlen = 128  # 序列最大长度
+    # max_features = 3000  # 最大特征数（词汇表大小）
+    # maxlen = 128  # 序列最大长度
+    embedding_dimension = 128
     # batch_size = 32  # 每批数据量大小
     # embedding_dims = 50  # 词嵌入维度
     # nb_filter = 250  # 1维卷积核个数
@@ -96,13 +97,12 @@ def do_cnn_doc2vec(trainX, testX, trainY, testY, embedMatrix):
 
     # model build
     model = keras.Sequential([
-        keras.layers.Embedding(input_dim=max_features, output_dim=len(embedMatrix), input_length=maxlen),
+        keras.layers.Embedding(input_dim=len(embedMatrix), output_dim=len(embedMatrix[0]),  input_length=128, trainable=False),
         keras.layers.Conv1D(filters=50, kernel_size=5, strides=1, padding='valid'),
         keras.layers.MaxPool1D(2, padding='valid'),
         keras.layers.Flatten(),
         keras.layers.Dense(16, activation='relu'),
-        keras.layers.Dropout(0.4),
-        keras.layers.Activation('relu'),
+        # keras.layers.Dropout(0.4),
         keras.layers.Dense(1, activation='sigmoid')
     ])
     # we start off with an efficient embedding layer which maps
@@ -132,7 +132,6 @@ def do_cnn_doc2vec(trainX, testX, trainY, testY, embedMatrix):
     # 投影到一个单神经元的输出层，并且使用 sigmoid 压缩它
     # model.add(keras.layers.Dense(1))
     # model.add(keras.layers.Activation('sigmoid'))
-    model.summary()  # 模型概述
 
     model.compile(optimizer=keras.optimizers.Adam(1e-3),
                   loss=keras.losses.BinaryCrossentropy(),
@@ -156,7 +155,20 @@ if __name__ == "__main__":
     # 读取数据
     # x_train, x_test, y_train, y_test = load_all_files()
     # 获取特征（词袋模型）
-    # x_train, x_test, y_train, y_test = get_features_by_wordbag()
+    # x_train, x_test, y_train, y_test = comment_data_pro.get_features_by_wordbag()
+    # x_train = comment_data_pro.listConvertNumpy(x_train)
+    # x_test = comment_data_pro.listConvertNumpy(x_test)
+    # y_train = comment_data_pro.listConvertNumpy(y_train)
+    # y_test = comment_data_pro.listConvertNumpy(y_test)
+    # print(x_train)
+    # print(x_test)
+    # print(x_train.shape)
+    # print(x_test.shape)
+    # print(y_train)
+    # print(y_test)
+    # print(y_train.shape)
+    # print(y_test.shape)
+    # exit()
     # print(x_train)
     # get_features_by_wordbag_tfidf()
     # get_features_by_word2vec()
@@ -164,11 +176,20 @@ if __name__ == "__main__":
     # x_train, x_test, y_train, y_test = comment_data_pro.get_features_by_wordbag()
     # x_train, x_test, y_train, y_test, embedMatrix = comment_data_pro.get_features_by_word2vec()
     # x_train, x_test, y_train, y_test = comment_data_pro.get_features_by_wordbag_tfidf()
+
     x_idx, y, embedMatrix = comment_data_pro.get_features_by_word2vec()
     x_train, x_test, y_train, y_test = comment_data_pro.getsample(x_idx, y)
-
+    # print(x_train)
+    # print(x_test)
+    # print(x_train.shape)
+    # print(x_test.shape)
+    # print(y_train)
+    # print(y_test)
+    # print(y_train.shape)
+    # print(y_test.shape)
+    # exit()
     # do_rnn_word2vec(x_train, x_test, y_train, y_test, embedMatrix)
-    do_cnn_doc2vec(x_train, x_test, y_train, y_test, embedMatrix)
+    # do_cnn_doc2vec(x_train, x_test, y_train, y_test, embedMatrix)
     # x_train, x_test, y_train, y_test = comment_data_pro.get_features_by_wordbag()
     # x_train, x_test, y_train, y_test = comment_data_pro.get_features_by_doc2vec()
     # do_nb_wordbag(x_train, x_test, y_train, y_test)

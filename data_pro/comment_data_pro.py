@@ -314,6 +314,8 @@ def  get_features_by_doc2vec():
         model.train(x, total_examples=model.corpus_count, epochs=12)
         model.save(doc2vec_path)
 
-    word2idx, embedMatrix = build_embedMatrix(model)
-    x_idx = getVecsByWord2Vec(x, word2idx)
-    return x_idx, y_train, y_test, embedMatrix
+
+    return x, y
+
+if __name__ == "__main__":
+    x, y = get_features_by_doc2vec()
