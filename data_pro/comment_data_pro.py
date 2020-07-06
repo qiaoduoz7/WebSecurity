@@ -11,7 +11,7 @@ from tensorflow.keras.preprocessing import sequence
 from sklearn.model_selection import train_test_split
 
 
-max_features = 128  # 每个word维度
+max_features = 5000  # 每个word维度
 max_document_length = 1000  # sequnence_length
 vocabulary = None
 doc2vec_path = "doc2vec.model"
@@ -184,6 +184,7 @@ def getsample(x, y):
     '''
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2,
                                                                   random_state=0, stratify=y)
+
     return x_train, x_test, y_train, y_test
 
 # def getVecs(model, corpus, size):
@@ -279,6 +280,10 @@ def labelizeReviews(reviews, label_type):
         labelized.append(SentimentDocument(v, [label]))
     return labelized
 
+def getvecs_dec2vec(model, corpus, size):
+    vecs = [np.array(model.docvecs[z.tags[0]]).reshape((1, size)) for z in corpus]
+    return np.array(np.concatenate(vecs),dtype='float')
+
 def  get_features_by_doc2vec():
     ''' 训练dec2vec
 
@@ -314,8 +319,8 @@ def  get_features_by_doc2vec():
         model.train(x, total_examples=model.corpus_count, epochs=12)
         model.save(doc2vec_path)
 
+    x_vec = getvecs_dec2vec(model, x, max_features)
+    y = listConvertNumpy(y)
+    return x_vec, y
 
-    return x, y
-
-if __name__ == "__main__":
-    x, y = get_features_by_doc2vec()
+    # def make_data_decd2vec():

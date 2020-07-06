@@ -37,8 +37,8 @@ def do_rf_doc2vec(x_train, x_test, y_train, y_test):
     print(metrics.accuracy_score(y_test, y_pred))
     print(metrics.confusion_matrix(y_test, y_pred))
 
-def do_dnn_doc2vec(x_train, x_test, y_train, y_test):
-    print("MLP and doc2vec")
+def do_dnn_word2vec(x_train, x_test, y_train, y_test):
+    print("MLP and woc2vec")
     # Building deep neural network
     clf = MLPClassifier(solver='lbfgs',
                         alpha=1e-5,
@@ -82,7 +82,7 @@ def do_rnn_word2vec(x_train, x_test, y_train, y_test, embedMatrix):
     print(confusion_matrix(y_test, y_pred_idx))
 
 
-def do_cnn_doc2vec(trainX, testX, trainY, testY, embedMatrix):
+def do_cnn_word2vec(trainX, testX, trainY, testY, embedMatrix):
     # set parameters:  设定参数
     # max_features = 3000  # 最大特征数（词汇表大小）
     # maxlen = 128  # 序列最大长度
@@ -151,7 +151,47 @@ def do_cnn_doc2vec(trainX, testX, trainY, testY, embedMatrix):
     #           nb_epoch=nb_epoch,
     #           validation_data=(testX, testY))
 
-if __name__ == "__main__":
+def do_cnn_dec2vec(trainX, testX, trainY, testY):
+    '''test cnn resoult
+
+    :param trainX:
+    :param testX:
+    :param trainY:
+    :param testY:
+    :return:
+    '''
+
+    # model build
+    model = keras.Sequential([
+        keras.layers.Embedding(input_dim=len(testX), output_dim=128, input_length=5000),
+        keras.layers.Conv1D(filters=50, kernel_size=5, strides=1, padding='valid'),
+        keras.layers.MaxPool1D(2, padding='valid'),
+        keras.layers.Flatten(),
+        keras.layers.Dense(16, activation='relu'),
+        keras.layers.Dense(1, activation='sigmoid')
+    ])
+    model.compile(optimizer=keras.optimizers.Adam(1e-3),
+                  loss=keras.losses.BinaryCrossentropy(),
+                  metrics=['accuracy'])
+    model.summary()
+    # 训练
+    history = model.fit(trainX, trainY, batch_size=32, epochs=5, validation_split=0.1)
+    dispaly_res.plot_graphs(history, 'accuracy')
+
+def do_dnn_doc2vec(x_train, x_test, y_train, y_test):
+    print("MLP and doc2vec")
+    # Building deep neural network
+    clf = MLPClassifier(solver='lbfgs',
+                        alpha=1e-5,
+                        hidden_layer_sizes = (5, 2),
+                        random_state = 1)
+    print(clf)
+    clf.fit(x_train, y_train)
+    y_pred = clf.predict(x_test)
+    print(metrics.accuracy_score(y_test, y_pred))
+    print(metrics.confusion_matrix(y_test, y_pred))
+
+# if __name__ == "__main__":
     # 读取数据
     # x_train, x_test, y_train, y_test = load_all_files()
     # 获取特征（词袋模型）
@@ -160,36 +200,19 @@ if __name__ == "__main__":
     # x_test = comment_data_pro.listConvertNumpy(x_test)
     # y_train = comment_data_pro.listConvertNumpy(y_train)
     # y_test = comment_data_pro.listConvertNumpy(y_test)
-    # print(x_train)
-    # print(x_test)
-    # print(x_train.shape)
-    # print(x_test.shape)
-    # print(y_train)
-    # print(y_test)
-    # print(y_train.shape)
-    # print(y_test.shape)
-    # exit()
-    # print(x_train)
-    # get_features_by_wordbag_tfidf()
-    # get_features_by_word2vec()
-    # get_features_by_doc2vec
-    # x_train, x_test, y_train, y_test = comment_data_pro.get_features_by_wordbag()
-    # x_train, x_test, y_train, y_test, embedMatrix = comment_data_pro.get_features_by_word2vec()
+    # 获取特征（词袋tf_idf模型）
     # x_train, x_test, y_train, y_test = comment_data_pro.get_features_by_wordbag_tfidf()
-
-    x_idx, y, embedMatrix = comment_data_pro.get_features_by_word2vec()
-    x_train, x_test, y_train, y_test = comment_data_pro.getsample(x_idx, y)
-    # print(x_train)
-    # print(x_test)
-    # print(x_train.shape)
-    # print(x_test.shape)
-    # print(y_train)
-    # print(y_test)
-    # print(y_train.shape)
-    # print(y_test.shape)
-    # exit()
+    # 获取特征（word2vec模型）
+    # x_idx, y, embedMatrix = comment_data_pro.get_features_by_word2vec()
+    # 获取特征（dec2vec模型）
+    # x_vec, y = comment_data_pro.get_features_by_doc2vec()
+    # 划分比例
+    # x_train, x_test, y_train, y_test = comment_data_pro.getsample(x_vec, y)
+    # cnn and dec2vec
+    # do_cnn_dec2vec(x_train, x_test, y_train, y_test)
+    # dnn and dec2vec
+    # do_dnn_doc2vec(x_train, x_test, y_train, y_test)
+    # rnn and word2vec
     # do_rnn_word2vec(x_train, x_test, y_train, y_test, embedMatrix)
-    # do_cnn_doc2vec(x_train, x_test, y_train, y_test, embedMatrix)
-    # x_train, x_test, y_train, y_test = comment_data_pro.get_features_by_wordbag()
-    # x_train, x_test, y_train, y_test = comment_data_pro.get_features_by_doc2vec()
-    # do_nb_wordbag(x_train, x_test, y_train, y_test)
+    # cnn and word2vec
+    # do_cnn_word2vec(x_train, x_test, y_train, y_test, embedMatrix)
