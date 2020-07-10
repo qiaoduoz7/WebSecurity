@@ -75,11 +75,7 @@ def do_rnn_word2vec(x_train, x_test, y_train, y_test, embedMatrix):
 
     model.fit(x_train, y_train, validation_data=(x_test, y_test),
               epochs=10, batch_size=32, verbose=1)
-    y_pred = model.predict(x_test)
-    y_pred_idx = [1 if prob[0] > 0.5 else 0 for prob in y_pred]
-
-    print(f1_score(y_test, y_pred_idx))
-    print(confusion_matrix(y_test, y_pred_idx))
+    model.evaluate(x_test, y_test)
 
 
 def do_cnn_word2vec(trainX, testX, trainY, testY, embedMatrix):
